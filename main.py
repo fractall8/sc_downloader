@@ -4,26 +4,15 @@ import sys
 from dotenv import load_dotenv
 from os import getenv
 
-from aiogram import Bot, Dispatcher, html
+from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart
-from aiogram.types import Message
+
+from app.handlers.sc_save_track import sc_save_track
+from app.handlers.index import router
 
 load_dotenv()
 TOKEN = getenv("BOT_TOKEN")
-
-dp = Dispatcher()
-
-
-@dp.message(CommandStart())
-async def command_start_handler(message: Message) -> None:
-    """
-    This handler receives messages with `/start` command
-    """
-    await message.answer(
-        f"Hello, this bot is created to save tracks from {html.bold("sound cloud")}!"
-    )
 
 
 async def main() -> None:
@@ -31,7 +20,8 @@ async def main() -> None:
         raise ValueError("BOT_TOKEN env variable is missing!")
 
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
+    dp = Dispatcher()
+    dp.include_routers(router, sc_save_track)
     await dp.start_polling(bot)
 
 
