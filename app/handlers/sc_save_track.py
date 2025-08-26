@@ -7,12 +7,12 @@ from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from app.helpers import (
-    get_client_id,
     get_track_info,
     get_stream_url,
-    save_file,
+    get_file,
     resolve_soundcloud_url,
 )
+from app.database.requests import get_client_id_cached
 
 load_dotenv()
 
@@ -45,7 +45,7 @@ async def process_track_url(message: Message, state: FSMContext):
             raise ValueError("Track url not provided")
         track_url = await resolve_soundcloud_url(short_url=track_url_input)
 
-        client_id = await get_client_id()
+        client_id = await get_client_id_cached()
         track_info = await get_track_info(client_id=client_id, track_url=track_url)
         await message.answer(
             f"Starting downloading track... Provided track: {html.link(link=track_url, value=f"{track_info["title"] or "your track"}")}"
@@ -60,12 +60,16 @@ async def process_track_url(message: Message, state: FSMContext):
         if track_info.get("downloadable") and "download_url" in track_info:
             download_url = f"{track_info['download_url']}?client_id={client_id}"
             await message.answer("⬇️ Downloading via official download_url")
-            file_bytes = await save_file(url=download_url, filename=filename)
+            file_bytes = await get_file(
+                track_id=track_info["id"], url=download_url, filename=filename
+            )
         else:
             stream_url = await get_stream_url(track=track_info, client_id=client_id)
             if stream_url:
                 await message.answer("⬇️ Downloading via progressive stream")
-                file_bytes = await save_file(url=stream_url, filename=filename)
+                file_bytes = await get_file(
+                    track_id=track_info["id"], url=stream_url, filename=filename
+                )
             else:
                 await message.answer(
                     "❌ Could not find a downloadable link for this track"

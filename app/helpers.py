@@ -1,4 +1,3 @@
-import re
 import aiohttp
 from io import BytesIO
 import os
@@ -7,24 +6,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
-
-
-# invoked on every request, cache for future
-async def get_client_id() -> str:
-    """Parse SoundCloud main page and receive client_id"""
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://soundcloud.com/") as resp:
-            html_text = await resp.text()
-            js_urls = re.findall(
-                r'src="(https://a-v2\.sndcdn\.com/assets/[^"]+\.js)"', html_text
-            )
-            for js_url in js_urls:
-                async with session.get(js_url) as js_resp:
-                    js_text = await js_resp.text()
-                    match = re.search(r'client_id\s*:\s*"([a-zA-Z0-9]{32})"', js_text)
-                    if match:
-                        return match.group(1)
-    raise Exception("Client ID not found")
+from app.database.requests import get_file_by_track_id, set_file_by_track_id
 
 
 async def resolve_soundcloud_url(short_url: str) -> str:
@@ -67,7 +49,7 @@ def get_drive_service():
     # full access to files created by the application
     SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
-    # Read access token from file (if exists)
+    # Read tokens from file (if exists)
     if os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
 
@@ -121,14 +103,25 @@ async def upload_file_to_drive(file: BytesIO, filename: str, folder_id: str) -> 
     return uploaded_file
 
 
-async def save_file(url: str, filename: str) -> bytes:
+async def get_file(track_id: str, url: str, filename: str) -> bytes:
+    cached_file = await get_file_by_track_id(track_id=track_id)
+    if cached_file:
+        print(f"Download file for {track_id} from drive")
+        return await download_file_from_drive(cached_file.drive_file_id)
+
     fh = await download_file(url=url)
 
     FOLDER_ID = os.getenv("FOLDER_ID")
     if FOLDER_ID is None:
         raise ValueError("FOLDER_ID env variable is not set")
 
-    await upload_file_to_drive(file=fh, filename=filename, folder_id=FOLDER_ID)
+    uploaded_file_metadata = await upload_file_to_drive(
+        file=fh, filename=filename, folder_id=FOLDER_ID
+    )
+    print(f"Save file for {track_id} in db")
+    await set_file_by_track_id(
+        filename=filename, track_id=track_id, drive_file_id=uploaded_file_metadata["id"]
+    )
     # upload file to drive reads fh, so after this func call fh.read() is empty. Manually set pointer to the start.
     fh.seek(0)
 
@@ -136,7 +129,7 @@ async def save_file(url: str, filename: str) -> bytes:
     return file_bytes
 
 
-async def download_file_from_drive(file_id: str) -> dict:
+async def download_file_from_drive(file_id: str) -> bytes:
     drive_service = get_drive_service()
     request = drive_service.files().get_media(fileId=file_id)
     fh = BytesIO()
@@ -148,12 +141,4 @@ async def download_file_from_drive(file_id: str) -> dict:
 
     fh.seek(0)
 
-    file_bytes = fh.read()
-
-    file_info = (
-        drive_service.files()
-        .get(fileId=file_id, fields="id, name, mimeType, size, webViewLink")
-        .execute()
-    )
-
-    return {"file": file_bytes, "name": file_info["name"]}
+    return fh.read()

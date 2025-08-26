@@ -5,6 +5,7 @@ downloads/
 todo.txt
 credentials.json
 token.json
+db.sqlite3
 
 # python environment
 .venv/
