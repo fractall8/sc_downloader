@@ -1,27 +1,25 @@
-import os
-
+from dotenv import load_dotenv
 import logging
+
 from aiogram import Router, html
 from aiogram.filters import Command
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from app.helpers import (
     get_client_id,
     get_track_info,
     get_stream_url,
-    download_file,
-    resolve_on_soundcloud_url,
+    save_file,
+    resolve_soundcloud_url,
 )
+
+load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 sc_save_track = Router()
-
-
-DOWNLOAD_DIR = "downloads"
-os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
 class TrackInfo(StatesGroup):
@@ -37,7 +35,7 @@ async def start_download(message: Message, state: FSMContext):
 @sc_save_track.message(TrackInfo.track_url)
 async def process_track_url(message: Message, state: FSMContext):
     if not message.text:
-        message.answer("Link must be a string!")
+        await message.answer("Link must be a string!")
         return
     await state.update_data(track_url=message.text.strip())
     try:
@@ -45,7 +43,7 @@ async def process_track_url(message: Message, state: FSMContext):
         track_url_input = state_data.get("track_url")
         if track_url_input is None:
             raise ValueError("Track url not provided")
-        track_url = await resolve_on_soundcloud_url(short_url=track_url_input)
+        track_url = await resolve_soundcloud_url(short_url=track_url_input)
 
         client_id = await get_client_id()
         track_info = await get_track_info(client_id=client_id, track_url=track_url)
@@ -62,24 +60,19 @@ async def process_track_url(message: Message, state: FSMContext):
         if track_info.get("downloadable") and "download_url" in track_info:
             download_url = f"{track_info['download_url']}?client_id={client_id}"
             await message.answer("⬇️ Downloading via official download_url")
-            file_path = await download_file(
-                url=download_url, filename=filename, download_dir=DOWNLOAD_DIR
-            )
+            file_bytes = await save_file(url=download_url, filename=filename)
         else:
             stream_url = await get_stream_url(track=track_info, client_id=client_id)
             if stream_url:
                 await message.answer("⬇️ Downloading via progressive stream")
-                file_path = await download_file(
-                    url=stream_url, filename=filename, download_dir=DOWNLOAD_DIR
-                )
+                file_bytes = await save_file(url=stream_url, filename=filename)
             else:
                 await message.answer(
                     "❌ Could not find a downloadable link for this track"
                 )
                 return
 
-        audio_file = FSInputFile(path=file_path, filename=filename)
-        await message.reply_audio(audio_file)
+        await message.reply_audio(BufferedInputFile(file=file_bytes, filename=filename))
 
     except Exception as e:
         logging.error("Error while downloading track:", e)
