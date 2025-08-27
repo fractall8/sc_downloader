@@ -5,6 +5,9 @@ from sqlalchemy import select
 from app.utils.database.models import async_session
 from app.utils.database.models import SoundCloud_Api_Settings, File
 
+from logging_config import get_app_logger
+
+logger = get_app_logger(name=__name__)
 CACHE_EXPIRATION_HOURS = 24
 
 
@@ -37,10 +40,10 @@ async def get_client_id_cached():
                 and row.updated_at
                 and (now - row.updated_at) < timedelta(hours=CACHE_EXPIRATION_HOURS)
             ):
-                print("Client id from cache")
+                logger.info("Receive client id from cache")
                 return row.client_id
 
-            print("Update and save client id in cache")
+            logger.info("Update and save client id in cache")
             new_client_id = await get_client_id()
 
             if row:

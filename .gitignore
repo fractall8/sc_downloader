@@ -6,6 +6,7 @@ todo.txt
 credentials.json
 token.json
 db.sqlite3
+logs/
 
 # python environment
 .venv/

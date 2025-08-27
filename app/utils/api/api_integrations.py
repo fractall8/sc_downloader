@@ -6,14 +6,21 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
+
 from app.utils.database.requests import get_file_by_track_id, set_file_by_track_id
+from logging_config import get_app_logger
+
+logger = get_app_logger(name=__name__)
 
 
 async def resolve_soundcloud_url(short_url: str) -> str:
     """If user provides short url, resolve full url"""
-    async with aiohttp.ClientSession() as session:
-        async with session.get(short_url, allow_redirects=True) as resp:
-            return str(resp.url)
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(short_url, allow_redirects=True) as resp:
+                return str(resp.url)
+    except Exception as e:
+        raise Exception(f"Failed to resolve track url, provided url: {short_url}")
 
 
 async def get_track_info(client_id: str, track_url: str) -> dict:
@@ -106,7 +113,7 @@ async def upload_file_to_drive(file: BytesIO, filename: str, folder_id: str) -> 
 async def get_file(track_id: str, url: str, filename: str) -> bytes:
     cached_file = await get_file_by_track_id(track_id=track_id)
     if cached_file:
-        print(f"Download file for {track_id} from drive")
+        logger.info(f"Download file for {track_id} id from drive")
         return await download_file_from_drive(cached_file.drive_file_id)
 
     fh = await download_file(url=url)
@@ -118,7 +125,7 @@ async def get_file(track_id: str, url: str, filename: str) -> bytes:
     uploaded_file_metadata = await upload_file_to_drive(
         file=fh, filename=filename, folder_id=FOLDER_ID
     )
-    print(f"Save file for {track_id} in db")
+    logger.info(f"Save file for {track_id} id in db")
     await set_file_by_track_id(
         filename=filename, track_id=track_id, drive_file_id=uploaded_file_metadata["id"]
     )

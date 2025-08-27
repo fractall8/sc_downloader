@@ -1,11 +1,10 @@
 from dotenv import load_dotenv
-import logging
-
 from aiogram import Router, html
 from aiogram.filters import Command
 from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+
 from app.utils.api.api_integrations import (
     get_track_info,
     get_stream_url,
@@ -13,12 +12,10 @@ from app.utils.api.api_integrations import (
     resolve_soundcloud_url,
 )
 from app.utils.database.requests import get_client_id_cached
+from logging_config import get_app_logger
 
 load_dotenv()
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+logger = get_app_logger(name=__name__)
 sc_download = Router()
 
 
@@ -42,7 +39,8 @@ async def process_track_url(message: Message, state: FSMContext):
         state_data = await state.get_data()
         track_url_input = state_data.get("track_url")
         if track_url_input is None:
-            raise ValueError("Track url not provided")
+            await message.answer("Track url not provided")
+            return
         track_url = await resolve_soundcloud_url(short_url=track_url_input)
 
         client_id = await get_client_id_cached()
@@ -79,5 +77,5 @@ async def process_track_url(message: Message, state: FSMContext):
         await message.reply_audio(BufferedInputFile(file=file_bytes, filename=filename))
 
     except Exception as e:
-        logging.error("Error while downloading track:", e)
-        await message.answer(f"Failed to download your track. Error: {str(e)}")
+        logger.error("Error while downloading track: %s", e)
+        await message.answer(f"Failed to download your track :(")
