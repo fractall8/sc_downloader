@@ -6,7 +6,7 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
-from app.database.requests import get_file_by_track_id, set_file_by_track_id
+from app.utils.database.requests import get_file_by_track_id, set_file_by_track_id
 
 
 async def resolve_soundcloud_url(short_url: str) -> str:

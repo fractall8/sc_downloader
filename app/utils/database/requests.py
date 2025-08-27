@@ -2,8 +2,8 @@ import re
 import aiohttp
 from datetime import datetime, timedelta
 from sqlalchemy import select
-from app.database.models import async_session
-from app.database.models import SoundCloud_Api_Settings, File
+from app.utils.database.models import async_session
+from app.utils.database.models import SoundCloud_Api_Settings, File
 
 CACHE_EXPIRATION_HOURS = 24
 

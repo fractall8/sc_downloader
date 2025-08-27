@@ -6,33 +6,33 @@ from aiogram.filters import Command
 from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from app.helpers import (
+from app.utils.api.api_integrations import (
     get_track_info,
     get_stream_url,
     get_file,
     resolve_soundcloud_url,
 )
-from app.database.requests import get_client_id_cached
+from app.utils.database.requests import get_client_id_cached
 
 load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-sc_save_track = Router()
+sc_download = Router()
 
 
 class TrackInfo(StatesGroup):
     track_url = State()
 
 
-@sc_save_track.message(Command("sc_download_track"))
+@sc_download.message(Command("sc_download_track"))
 async def start_download(message: Message, state: FSMContext):
     await state.set_state(TrackInfo.track_url)
     await message.answer("Send a link to the track you want to download")
 
 
-@sc_save_track.message(TrackInfo.track_url)
+@sc_download.message(TrackInfo.track_url)
 async def process_track_url(message: Message, state: FSMContext):
     if not message.text:
         await message.answer("Link must be a string!")

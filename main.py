@@ -8,7 +8,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from app.handlers.sc_save_track import sc_save_track
+from app.handlers.sc_download.commands import sc_download
 from app.handlers.index import router
 
 load_dotenv()
@@ -21,7 +21,7 @@ async def main() -> None:
 
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
-    dp.include_routers(router, sc_save_track)
+    dp.include_routers(router, sc_download)
     await dp.start_polling(bot)
 
 
