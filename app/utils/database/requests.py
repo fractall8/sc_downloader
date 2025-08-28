@@ -2,9 +2,15 @@ import re
 import aiohttp
 from datetime import datetime, timedelta
 from sqlalchemy import select
-from app.utils.database.models import async_session
-from app.utils.database.models import SoundCloud_Api_Settings, File
 
+from app.utils.database.models import (
+    Base,
+    engine,
+    SoundCloud_Api_Settings,
+    File,
+    async_session,
+    engine,
+)
 from logging_config import get_app_logger
 
 logger = get_app_logger(name=__name__)
@@ -72,3 +78,9 @@ async def set_file_by_track_id(
             )
             session.add(new_file)
             await session.commit()
+
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database alive")
