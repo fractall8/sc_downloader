@@ -1,5 +1,4 @@
-from dotenv import load_dotenv
-from aiogram import Router, html
+from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.context import FSMContext
@@ -14,7 +13,6 @@ from app.utils.api.api_integrations import (
 from app.utils.database.requests import get_client_id_cached
 from logging_config import get_app_logger
 
-load_dotenv()
 logger = get_app_logger(name=__name__)
 sc_download = Router()
 

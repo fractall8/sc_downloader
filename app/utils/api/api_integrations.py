@@ -1,9 +1,8 @@
 import aiohttp
 from io import BytesIO
-import os
+import os, base64, json
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 
@@ -51,23 +50,20 @@ async def get_stream_url(track: dict, client_id: str) -> str | None:
 
 
 def get_drive_service():
-    creds = None
-
     # full access to files created by the application
     SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+    CREDENTIALS = os.getenv("GOOGLE_CREDENTIALS_B64")
+    if CREDENTIALS is None:
+        raise ValueError("Google Drive user is not authorized")
 
-    # Read tokens from file (if exists)
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    creds_json = json.loads(base64.b64decode(CREDENTIALS).decode("utf-8"))
+    creds = Credentials.from_authorized_user_info(creds_json, SCOPES)
 
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
+            raise Exception("Google Drive refresh token expired.")
 
     return build("drive", "v3", credentials=creds)
 
