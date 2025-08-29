@@ -4,13 +4,14 @@ from aiogram.types import Message, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from app.utils.api.api_integrations import (
+from app.utils.api.api_integrations import get_file
+from app.utils.api.soundcloud import (
     get_track_info,
     get_stream_url,
-    get_file,
     resolve_soundcloud_url,
 )
 from app.utils.database.requests import get_client_id_cached
+from app.utils.helpers.track_metadata import get_cover
 from logging_config import get_app_logger
 
 logger = get_app_logger(name=__name__)
@@ -63,13 +64,19 @@ async def process_track_url(message: Message, state: FSMContext):
         if track_info.get("downloadable") and "download_url" in track_info:
             download_url = f"{track_info['download_url']}?client_id={client_id}"
             file_bytes = await get_file(
-                track_id=track_info["id"], url=download_url, filename=filename
+                track_id=track_info["id"],
+                url=download_url,
+                filename=filename,
+                track_info=track_info,
             )
         else:
             stream_url = await get_stream_url(track=track_info, client_id=client_id)
             if stream_url:
                 file_bytes = await get_file(
-                    track_id=track_info["id"], url=stream_url, filename=filename
+                    track_id=track_info["id"],
+                    url=stream_url,
+                    filename=filename,
+                    track_info=track_info,
                 )
             else:
                 await message.answer(
@@ -78,7 +85,15 @@ async def process_track_url(message: Message, state: FSMContext):
                 return
 
         await loading_state_message.edit_text("Done, sending your file ;)")
-        await message.reply_audio(BufferedInputFile(file=file_bytes, filename=filename))
+
+        thumb = None
+        apic = get_cover(audio_bytes=file_bytes)
+        if apic:
+            thumb = BufferedInputFile(apic, filename="cover.jpg")
+
+        await message.reply_audio(
+            audio=BufferedInputFile(file=file_bytes, filename=filename), thumb=thumb
+        )
         await loading_state_message.delete()
 
     except Exception as e:
