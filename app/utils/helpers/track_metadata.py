@@ -14,19 +14,28 @@ def add_metadata(
     track_info: dict,
 ) -> BytesIO | None:
     try:
-        album = track_info.get("publisher_metadata", {}).get("album_title", "")
-        artist = track_info.get("publisher_metadata", {}).get("artist", "")
-        title = track_info.get("title", "")
-        genre = track_info.get("genre", "")
+        title = track_info.get("title", "") or ""
+        genre = track_info.get("genre", "") or ""
+        album = (track_info.get("publisher_metadata") or {}).get(
+            "album_title", ""
+        ) or ""
+        artist = (track_info.get("publisher_metadata") or {}).get("artist", "") or ""
+        display_date = track_info.get("display_date", "") or ""
 
-        dt = datetime.strptime(track_info.get("display_date", ""), "%Y-%m-%dT%H:%M:%SZ")
-        year = str(dt.year)
+        try:
+            dt = datetime.strptime(display_date, "%Y-%m-%dT%H:%M:%SZ")
+            year = str(dt.year)
+        except ValueError:
+            year = ""
 
-        # download cover
-        response = requests.get(track_info.get("artwork_url", ""))
-        response.raise_for_status()
+        artwork_url = track_info.get("artwork_url", "")
+        cover_bytes = None
+        if artwork_url:
+            # download cover
+            response = requests.get(artwork_url)
+            response.raise_for_status()
 
-        cover_bytes = BytesIO(response.content).read()
+            cover_bytes = BytesIO(response.content).read()
 
         audio_file.seek(0)
 
@@ -68,6 +77,7 @@ def get_cover(audio_bytes: bytes) -> bytes | None:
         if mp3.tags is None:
             return
         apic = mp3.tags.get("APIC:Cover")
-        return apic.data
+
+        return apic.data if apic else None
     except Exception as e:
         logger.error("Failed to get cover: %s", e)
