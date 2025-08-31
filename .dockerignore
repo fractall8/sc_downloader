@@ -1,0 +1,13 @@
+.vscode/
+__pycache__/
+.venv/
+
+downloads/
+todo.txt
+credentials.json
+token.json
+db.sqlite3
+logs/
+.env
+
+.git/
