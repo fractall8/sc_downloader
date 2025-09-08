@@ -3,6 +3,7 @@ from datetime import datetime
 from io import BytesIO
 from mutagen.id3._frames import TIT2, TPE1, TALB, TYER, APIC, TCON
 from mutagen.mp3 import MP3
+from mutagen.mp4 import MP4, MP4Cover
 
 from logging_config import get_app_logger
 
@@ -19,16 +20,23 @@ def add_metadata(
         album = (track_info.get("publisher_metadata") or {}).get(
             "album_title", ""
         ) or ""
-        artist = (track_info.get("publisher_metadata") or {}).get("artist", "") or ""
+        artist = (
+            (track_info.get("publisher_metadata") or {}).get("artist", "")
+            or track_info.get("author", "")
+            or ""
+        )
         display_date = track_info.get("display_date", "") or ""
 
         try:
             dt = datetime.strptime(display_date, "%Y-%m-%dT%H:%M:%SZ")
             year = str(dt.year)
         except ValueError:
-            year = ""
+            year = track_info.get("year", "") or ""
 
-        artwork_url = track_info.get("artwork_url", "")
+        artwork_url = (
+            track_info.get("artwork_url", "") or track_info.get("thumbnail", "") or ""
+        )
+
         cover_bytes = None
         if artwork_url:
             # download cover
@@ -80,4 +88,4 @@ def get_cover(audio_bytes: bytes) -> bytes | None:
 
         return apic.data if apic else None
     except Exception as e:
-        logger.error("Failed to get cover: %s", e)
+        logger.error("(mp3) Failed to get cover: %s", e)

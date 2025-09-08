@@ -6,6 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from app.handlers.sc_download.commands import sc_download
+from app.handlers.yt_download.commands import yt_download
 from app.handlers.index import router
 from logging_config import get_app_logger
 from app.utils.database.requests import init_db
@@ -24,7 +25,7 @@ async def main() -> None:
 
     bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
-    dp.include_routers(router, sc_download)
+    dp.include_routers(router, sc_download, yt_download)
     main_logger.info("Starting polling...")
     await dp.start_polling(bot)
 
