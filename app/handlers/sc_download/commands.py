@@ -1,8 +1,4 @@
-from aiogram import Router
-from aiogram.filters import Command
 from aiogram.types import Message, BufferedInputFile
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 
 from app.utils.api.api_integrations import get_sc_file
 from app.utils.api.soundcloud import (
@@ -15,42 +11,15 @@ from app.utils.helpers.track_metadata import get_cover
 from logging_config import get_app_logger
 
 logger = get_app_logger(name=__name__)
-sc_download = Router()
 
 
-class SoundCloudTrack(StatesGroup):
-    track_url = State()
-
-
-@sc_download.message(Command("sc_download_track"))
-async def start_download(message: Message, state: FSMContext):
-    await state.set_state(SoundCloudTrack.track_url)
-    await message.answer("Send a link to the track you want to download")
-
-
-@sc_download.message(SoundCloudTrack.track_url)
-async def process_track_url(message: Message, state: FSMContext):
+async def process_sc_track_url(message: Message):
     if not message.text:
         await message.answer("Link must be a string!")
         return
-    await state.update_data(track_url=message.text.strip())
     try:
-        state_data = await state.get_data()
-        track_url_input = state_data.get("track_url")
-
+        track_url_input = message.text
         loading_state_message = await message.answer("Checking your link...")
-
-        if track_url_input is None:
-            await message.answer("Track url not provided")
-            await loading_state_message.delete()
-            return
-
-        if not "soundcloud.com" in track_url_input:
-            await message.answer(
-                "This doesn't appear to be a SoundCloud link. Please provide the correct URL."
-            )
-            await loading_state_message.delete()
-            return
 
         track_url = await resolve_soundcloud_url(short_url=track_url_input)
 
